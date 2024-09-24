@@ -1,4 +1,3 @@
-let CATEGORIES = ["1286846296128360503"]
 
 
 import {
@@ -47,6 +46,12 @@ function isPlayerSearchAvailable(interaction){
     let foundVoiceChannel = activeChannels.find((acChannel) => {
         return acChannel["voiceChannelID"] === voiceChannel.id;
     })
+    if (voiceChannel.userLimit === 0) {
+        return {message: "Dein Channel hat keine User Limit!"};
+    }
+    if (voiceChannel.userLimit === voiceChannel.members.size) {
+        return {message: "Dein Channel ist bereits voll!"};
+    }
     if (foundVoiceChannel) {
         return {"message": "Dein Channel ist bereits gelistet!"};
     }
