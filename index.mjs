@@ -1,5 +1,3 @@
-
-
 import {
     Client,
     GatewayIntentBits,
@@ -16,6 +14,7 @@ import fs from 'fs';
 
 const filePath = './config.json';
 let config
+let lastMessage = null;
 readConfig()
 
 function saveConfig() {
@@ -26,7 +25,7 @@ function readConfig() {
     config = JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
-const bot = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildVoiceStates, ] });
+const bot = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildVoiceStates ] });
 
 let activeChannels = [];
 
@@ -77,7 +76,7 @@ function createLFPEmbed(voiceChannel) {
     let embed = new EmbedBuilder()
         .setTitle('Neue Spieler Suche!')
         .setColor(color)
-        .setDescription('<#' + voiceChannel.id + '> sucht noch ' + playersNeeded + ' Spieler')
+        .setDescription('<#' + voiceChannel.id + '> sucht noch ' + playersNeeded + ' Spieler\n(Drücke auf die Verlinkung um dem Channel beizutreten)')
         .setTimestamp()
     let fields = [];
     let counter = 0;
@@ -88,7 +87,8 @@ function createLFPEmbed(voiceChannel) {
         fields.push({name: 'Spieler ' + (i + 1 + voiceChannel.members.size), value: "Gesucht..."});
     }
     embed.addFields(fields);
-    return embed;
+
+    return {content: "<@&1191502134009671741>", embeds: [embed.toJSON()]};
 }
 
 bot.on(Events.InteractionCreate, async (interaction) => {
@@ -119,12 +119,34 @@ bot.on(Events.InteractionCreate, async (interaction) => {
                 return;
             }
             let embed = createLFPEmbed(voiceChannel);
-            let message = await interaction.channel.send({embeds: [embed]});
+            let message = await interaction.channel.send(embed);
             activeChannels.push({voiceChannelID: voiceChannel.id, messageID: message.id});
             interaction.reply({content: "Dein Channel wurde erfolgreich gelistet!", ephemeral: true});
+            sendButtonMessage()
         }
     }
 })
+
+function sendButtonMessage(){
+    if (lastMessage !== null) {
+        bot.channels.fetch(config["channel_id"]).then((channel) => {
+            channel.messages.fetch(lastMessage).then((message) => {
+                message.delete();
+            })
+        })
+    }
+    bot.channels.fetch(config["channel_id"]).then((channel) => {
+        const lfpButton = new ButtonBuilder()
+            .setCustomId('lfp')
+            .setLabel('Starte Spielersuche')
+            .setStyle(ButtonStyle.Primary);
+
+        const row = new ActionRowBuilder().addComponents(lfpButton);
+        channel.send({content: "Klicke auf den Button um eine LFP Nachricht zu erstellen!", components: [row]}).then((message) => {
+            lastMessage = message.id;
+        });
+    })
+}
 
 function setupTextChannel() {
     if (config["channel_id"] === undefined) {
@@ -132,13 +154,7 @@ function setupTextChannel() {
     }
     bot.channels.fetch(config["channel_id"]).then((channel) => {
         channel.bulkDelete(100).then(() => {
-            const lfpButton = new ButtonBuilder()
-                .setCustomId('lfp')
-                .setLabel('Spielersuche Öffnen')
-                .setStyle(ButtonStyle.Primary);
-
-            const row = new ActionRowBuilder().addComponents(lfpButton);
-            channel.send({content: "Klicke auf den Button um eine LFP Nachricht zu erstellen!", components: [row]});
+            sendButtonMessage()
         })
     })
 }
@@ -161,7 +177,7 @@ function checkVoiceStates(state){
         }
         let embed = createLFPEmbed(voiceChannel);
         let message = bot.channels.cache.get(config["channel_id"]).messages.cache.get(foundVoiceChannel["messageID"]);
-        message.edit({embeds: [embed]});
+        message.edit(embed);
     }
 }
 
