@@ -46,13 +46,13 @@ function isPlayerSearchAvailable(interaction){
         return acChannel["voiceChannelID"] === voiceChannel.id;
     })
     if (voiceChannel.userLimit === 0) {
-        return {message: "Dein Channel hat keine User Limit!"};
+        return {message: "Dein Channel hat keinen User Limit!"};
     }
     if (voiceChannel.userLimit === voiceChannel.members.size) {
         return {message: "Dein Channel ist bereits voll!"};
     }
     if (foundVoiceChannel) {
-        return {"message": "Dein Channel ist bereits gelistet!"};
+        return {message: "Dein Channel ist bereits gelistet!"};
     }
     return true;
 }
