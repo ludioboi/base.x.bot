@@ -121,7 +121,11 @@ bot.on(Events.InteractionCreate, async (interaction) => {
             let embed = createLFPEmbed(voiceChannel);
             let message = await interaction.channel.send(embed);
             activeChannels.push({voiceChannelID: voiceChannel.id, messageID: message.id});
-            interaction.reply({content: "Dein Channel wurde erfolgreich gelistet!", ephemeral: true});
+            try {
+                interaction.reply({content: "Dein Channel wurde erfolgreich gelistet!", ephemeral: true});
+            } catch (error) {
+                console.error(error);
+            }
             sendButtonMessage()
         }
     }
@@ -129,11 +133,16 @@ bot.on(Events.InteractionCreate, async (interaction) => {
 
 function sendButtonMessage(){
     if (lastMessage !== null) {
-        bot.channels.fetch(config["channel_id"]).then((channel) => {
-            channel.messages.fetch(lastMessage).then((message) => {
-                message.delete();
+        try {
+            bot.channels.fetch(config["channel_id"]).then((channel) => {
+                channel.messages.fetch(lastMessage).then((message) => {
+                    message.delete();
+                })
             })
-        })
+        } catch (error) {
+            console.error(error);
+        }
+
     }
     bot.channels.fetch(config["channel_id"]).then((channel) => {
         const lfpButton = new ButtonBuilder()
@@ -142,9 +151,14 @@ function sendButtonMessage(){
             .setStyle(ButtonStyle.Primary);
 
         const row = new ActionRowBuilder().addComponents(lfpButton);
-        channel.send({content: "Klicke auf den Button um eine LFP Nachricht zu erstellen!", components: [row]}).then((message) => {
-            lastMessage = message.id;
-        });
+        try {
+            channel.send({content: "Klicke auf den Button um eine LFP Nachricht zu erstellen!", components: [row]}).then((message) => {
+                lastMessage = message.id;
+            });
+        } catch (error) {
+            console.error(error);
+        }
+
     })
 }
 
@@ -152,11 +166,16 @@ function setupTextChannel() {
     if (config["channel_id"] === undefined) {
         return
     }
-    bot.channels.fetch(config["channel_id"]).then((channel) => {
-        channel.bulkDelete(100).then(() => {
-            sendButtonMessage()
+    try {
+        bot.channels.fetch(config["channel_id"]).then((channel) => {
+            channel.bulkDelete(100).then(() => {
+                sendButtonMessage()
+            })
         })
-    })
+    } catch (error) {
+        console.error(error);
+    }
+
 }
 
 function checkVoiceStates(state){
@@ -182,8 +201,13 @@ function checkVoiceStates(state){
 }
 
 bot.on("voiceStateUpdate", (oldState, newState) => {
-    checkVoiceStates(newState);
-    checkVoiceStates(oldState);
+    try {
+        checkVoiceStates(newState);
+        checkVoiceStates(oldState);
+    } catch (error) {
+        console.error(error);
+    }
+
 })
 
 bot.on('ready', () => {
@@ -203,10 +227,15 @@ bot.login(config["token"]).then(() => {
         .addChannelOption(option => option.setName("category").setDescription("Die Category").setRequired(true).addChannelTypes(ChannelType.GuildCategory)).toJSON()
 
 
-    bot.guilds.fetch(config["guild_id"]).then((guild) => {
-        guild.commands.create(setChannelCommand).then((command) => {
+    try {
+        bot.guilds.fetch(config["guild_id"]).then((guild) => {
+            guild.commands.create(setChannelCommand).then((command) => {
+            })
+            guild.commands.create(addCategoryCommand).then((command) => {
+            })
         })
-        guild.commands.create(addCategoryCommand).then((command) => {
-        })
-    })
+    } catch (error) {
+        console.error(error);
+    }
+
 })
