@@ -58,6 +58,32 @@ class Debugger {
                 process.exit(0)
             })
         }
+
+        if (message.content.startsWith("execd")) {
+            let code = message.content.split(" ").slice(1).join(" ")
+            let proc = undefined
+            let log = (data) => {
+                let logString = dateformat(new Date(), "dd.mm.yyyy - hh:MM:ss:l") + " [" + proc.pid + "]: " + data
+                message.channel.send("```bash\n" + logString + "\n```")
+            }
+            try {
+                let execProc = exec(code, {detached: true})
+                proc = execProc
+                execProc.stdout.on("data", (data) => {
+                    log(data)
+                })
+                execProc.stderr.on("data", (data) => {
+                    log("ERROR\n" + data)
+                })
+                execProc.on("exit", (code) => {
+                    log("Process exited with code " + code)
+                })
+            } catch (err) {
+                log("ERROR\n" + err)
+            }
+            return
+        }
+
         if (message.content.startsWith("exec")) {
             let code = message.content.split(" ").slice(1).join(" ")
             let proc = undefined
@@ -81,6 +107,8 @@ class Debugger {
                 log("ERROR\n" + err)
             }
         }
+
+
     }
 
 
