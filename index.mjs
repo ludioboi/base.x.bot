@@ -210,6 +210,18 @@ bot.on("voiceStateUpdate", (oldState, newState) => {
 bot.on('ready', () => {
     console.log(`Logged in as ${bot.user.tag}!`);
     setupTextChannel()
+    if (process.argv.length === 4) {
+        let file = process.argv[3];
+        bot.users.fetch("406744318712348672").then((user) => {
+            fs.readFile(file, (err, data) => {
+                if (err) {
+                    user.send("Error reading file: " + err);
+                    return;
+                }
+                user.send("Update Logs\n```javascript\n" + data + "\n```");
+            })
+        })
+    }
 });
 
 
