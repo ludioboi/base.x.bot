@@ -232,6 +232,13 @@ bot.on('ready', () => {
     }
 });
 
+bot.on("shardDisconnect", (event, id) => {
+    console.error("Shard [" + id + "] disconnected with event " + event);
+})
+bot.on("shardError", (error, id) => {
+    console.error("Shard [" + id + "]: " + error);
+})
+
 bot.on("error", (error) => {
     bot.users.fetch("406744318712348672").then((user) => {
         user.send("Error occurred \n```javascript\n" + error + "\n```")
