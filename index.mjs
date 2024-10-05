@@ -12,6 +12,7 @@ import {
 } from 'discord.js';
 
 import fs from 'fs';
+import Debugger from './debugger.mjs';
 
 const filePath = './config.json';
 let config
@@ -26,7 +27,7 @@ function readConfig() {
     config = JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
-const bot = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.DirectMessages ], partials: [Partials.Channel] });
+const bot = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.DirectMessages ], partials: [Partials.Channel, Partials.Message, Partials.User] });
 
 let activeChannels = [];
 
@@ -106,6 +107,7 @@ function createLFPEmbed(voiceChannel) {
 bot.on(Events.InteractionCreate, async (interaction) => {
     errorHandling(async () => {
         if (interaction.isChatInputCommand()) {
+            console.log("Chat Input Command \"" + interaction.commandName + "\" executed by " + interaction.user.tag);
             if (interaction.commandName === "setchannel") {
                 let channel = interaction.channel;
                 config["channel_id"] = channel.id;
@@ -121,9 +123,15 @@ bot.on(Events.InteractionCreate, async (interaction) => {
                 readConfig()
                 interaction.reply({content: "Category hinzugefügt!", ephemeral: true})
             }
+            if (interaction.commandName === "logs") {
+                let logsFile = "./logs.txt";
+                let logs = fs.readFileSync(logsFile, 'utf8');
+                interaction.reply({content: "Logs\n```javascript\n" + logs + "\n```", ephemeral: true});
+            }
         }
         if (interaction.isButton()) {
             if (interaction.customId === "lfp") {
+                console.log("Button \"lfp\" clicked by " + interaction.user.tag);
                 let member = interaction.member;
                 let voiceChannel = member.voice.channel;
                 let playerSearchAvailable = isPlayerSearchAvailable(interaction);
@@ -224,7 +232,7 @@ bot.on('ready', () => {
     }
 });
 
-
+let deb = new Debugger(bot);
 bot.login(process.argv[2]).then(() => {
     const setChannelCommand = {
         name: "setchannel",
@@ -235,12 +243,18 @@ bot.login(process.argv[2]).then(() => {
         .setDescription("Fügt eine Kategorie zur Whitelist hinzu")
         .addChannelOption(option => option.setName("category").setDescription("Die Category").setRequired(true).addChannelTypes(ChannelType.GuildCategory)).toJSON()
 
+    const logsCommand = new SlashCommandBuilder()
+        .setName("logs")
+        .setDescription("Gebe dir die letzen Logs seit dem Start des Main Threads aus")
+
 
     errorHandling(()=> {
         bot.guilds.fetch(config["guild_id"]).then((guild) => {
             guild.commands.create(setChannelCommand).then((command) => {
             })
             guild.commands.create(addCategoryCommand).then((command) => {
+            })
+            guild.commands.create(logsCommand).then((command) => {
             })
         })
     })
