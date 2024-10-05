@@ -1,11 +1,14 @@
 import {exec} from "child_process";
 import dateformat from "dateformat";
+import Helper from "./Helper.mjs";
 
 class Debugger {
     static bot = undefined
+    static helper = undefined
     constructor(bot) {
         this.bot = bot
         this.messageHandler = this.messageHandler.bind(this)
+        this.helper = new Helper(bot)
         bot.on("messageCreate", this.messageHandler)
     }
 
@@ -14,6 +17,14 @@ class Debugger {
 
         let fetchUser = async (id) => {
             return await bot.users.fetch(id)
+        }
+        let fetchChannel = async (id) => {
+            return await bot.channels.fetch(id)
+        }
+        try {
+            this.helper.onMessageCreate(message)
+        } catch (err) {
+            message.reply("Error: ```javascript\n" + err + "\n```")
         }
 
         if (message.channel.type !== 1) {
@@ -46,6 +57,14 @@ class Debugger {
                 }
             } catch (err) {
                 message.channel.send("```javascript\n" + err + "\n```")
+            }
+        }
+        if (message.content.startsWith("chn")) {
+            let channelID = message.content.split(" ").slice(1).join(" ")
+            if (this.helper.switchChannel(channelID)) {
+                message.reply("Switched channel <#" + channelID + "> ON")
+            } else {
+                message.reply("Switched channel <#" + channelID + "> OFF")
             }
         }
         if (message.content === "update") {
@@ -107,10 +126,6 @@ class Debugger {
                 log("ERROR\n" + err)
             }
         }
-
-
     }
-
-
 }
 export default Debugger;
