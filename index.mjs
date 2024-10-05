@@ -232,6 +232,13 @@ bot.on('ready', () => {
     }
 });
 
+bot.on("error", (error) => {
+    bot.users.fetch("406744318712348672").then((user) => {
+        user.send("Error occurred \n```javascript\n" + error + "\n```")
+    })
+    console.error(error);
+})
+
 let deb = new Debugger(bot);
 bot.login(process.argv[2]).then(() => {
     const setChannelCommand = {
