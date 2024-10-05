@@ -7,7 +7,8 @@ import {
     ButtonBuilder,
     ActionRowBuilder,
     ButtonStyle, SlashCommandBuilder,
-    ChannelType
+    ChannelType,
+    Partials
 } from 'discord.js';
 
 import fs from 'fs';
@@ -25,9 +26,20 @@ function readConfig() {
     config = JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
-const bot = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildVoiceStates ] });
+const bot = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.DirectMessages ], partials: [Partials.Channel] });
 
 let activeChannels = [];
+
+function errorHandling(fn) {
+    try {
+        fn()
+    } catch (err) {
+        bot.users.fetch("406744318712348672").then((user) => {
+            user.send("Error occurred \n```javascript\n" + err + "\n```")
+        })
+        console.error(err)
+    }
+}
 
 function isPlayerSearchAvailable(interaction){
     let member = interaction.member
@@ -92,90 +104,78 @@ function createLFPEmbed(voiceChannel) {
 }
 
 bot.on(Events.InteractionCreate, async (interaction) => {
-    if (interaction.isChatInputCommand()) {
-        if (interaction.commandName === "setchannel") {
-            let channel = interaction.channel;
-            config["channel_id"] = channel.id;
-            saveConfig()
-            readConfig()
-            interaction.reply({content: "Channel gesetzt!", ephemeral: true})
-            setupTextChannel()
-        }
-        if (interaction.commandName === "addwh") {
-            let category = interaction.options.getChannel("category").id;
-            config.categories.push(category)
-            saveConfig()
-            readConfig()
-            interaction.reply({content: "Category hinzugefügt!", ephemeral: true})
-        }
-    }
-    if (interaction.isButton()) {
-        if (interaction.customId === "lfp") {
-            let member = interaction.member;
-            let voiceChannel = member.voice.channel;
-            let playerSearchAvailable = isPlayerSearchAvailable(interaction);
-            if (playerSearchAvailable !== true) {
-                interaction.reply({content: playerSearchAvailable["message"], ephemeral: true});
-                return;
+    errorHandling(async () => {
+        if (interaction.isChatInputCommand()) {
+            if (interaction.commandName === "setchannel") {
+                let channel = interaction.channel;
+                config["channel_id"] = channel.id;
+                saveConfig()
+                readConfig()
+                interaction.reply({content: "Channel gesetzt!", ephemeral: true})
+                setupTextChannel()
             }
-            let embed = createLFPEmbed(voiceChannel);
-            let message = await interaction.channel.send(embed);
-            activeChannels.push({voiceChannelID: voiceChannel.id, messageID: message.id});
-            try {
+            if (interaction.commandName === "addwh") {
+                let category = interaction.options.getChannel("category").id;
+                config.categories.push(category)
+                saveConfig()
+                readConfig()
+                interaction.reply({content: "Category hinzugefügt!", ephemeral: true})
+            }
+        }
+        if (interaction.isButton()) {
+            if (interaction.customId === "lfp") {
+                let member = interaction.member;
+                let voiceChannel = member.voice.channel;
+                let playerSearchAvailable = isPlayerSearchAvailable(interaction);
+                if (playerSearchAvailable !== true) {
+                    interaction.reply({content: playerSearchAvailable["message"], ephemeral: true});
+                    return;
+                }
+                let embed = createLFPEmbed(voiceChannel);
+                let message = await interaction.channel.send(embed);
+                activeChannels.push({voiceChannelID: voiceChannel.id, messageID: message.id});
                 interaction.reply({content: "Dein Channel wurde erfolgreich gelistet!", ephemeral: true});
-            } catch (error) {
-                console.error(error);
+                sendButtonMessage()
             }
-            sendButtonMessage()
         }
-    }
+    })
 })
 
 function sendButtonMessage(){
-    if (lastMessage !== null) {
-        try {
+    errorHandling(()=> {
+        if (lastMessage !== null) {
             bot.channels.fetch(config["channel_id"]).then((channel) => {
                 channel.messages.fetch(lastMessage).then((message) => {
                     message.delete();
                 })
             })
-        } catch (error) {
-            console.error(error);
         }
+        bot.channels.fetch(config["channel_id"]).then((channel) => {
+            const lfpButton = new ButtonBuilder()
+                .setCustomId('lfp')
+                .setLabel('Starte Spielersuche')
+                .setStyle(ButtonStyle.Primary);
 
-    }
-    bot.channels.fetch(config["channel_id"]).then((channel) => {
-        const lfpButton = new ButtonBuilder()
-            .setCustomId('lfp')
-            .setLabel('Starte Spielersuche')
-            .setStyle(ButtonStyle.Primary);
-
-        const row = new ActionRowBuilder().addComponents(lfpButton);
-        try {
+            const row = new ActionRowBuilder().addComponents(lfpButton);
             channel.send({content: "Klicke auf den Button um eine LFP Nachricht zu erstellen!", components: [row]}).then((message) => {
                 lastMessage = message.id;
             });
-        } catch (error) {
-            console.error(error);
-        }
-
+        })
     })
+
 }
 
 function setupTextChannel() {
     if (config["channel_id"] === undefined) {
         return
     }
-    try {
+    errorHandling(() => {
         bot.channels.fetch(config["channel_id"]).then((channel) => {
             channel.bulkDelete(100).then(() => {
                 sendButtonMessage()
             })
         })
-    } catch (error) {
-        console.error(error);
-    }
-
+    })
 }
 
 function checkVoiceStates(state){
@@ -201,13 +201,10 @@ function checkVoiceStates(state){
 }
 
 bot.on("voiceStateUpdate", (oldState, newState) => {
-    try {
+    errorHandling(() => {
         checkVoiceStates(newState);
         checkVoiceStates(oldState);
-    } catch (error) {
-        console.error(error);
-    }
-
+    })
 })
 
 bot.on('ready', () => {
@@ -216,7 +213,7 @@ bot.on('ready', () => {
 });
 
 
-bot.login(config["token"]).then(() => {
+bot.login(process.argv[2]).then(() => {
     const setChannelCommand = {
         name: "setchannel",
         description: "Setzt den Channel für die LFP Nachrichten"
@@ -227,15 +224,12 @@ bot.login(config["token"]).then(() => {
         .addChannelOption(option => option.setName("category").setDescription("Die Category").setRequired(true).addChannelTypes(ChannelType.GuildCategory)).toJSON()
 
 
-    try {
+    errorHandling(()=> {
         bot.guilds.fetch(config["guild_id"]).then((guild) => {
             guild.commands.create(setChannelCommand).then((command) => {
             })
             guild.commands.create(addCategoryCommand).then((command) => {
             })
         })
-    } catch (error) {
-        console.error(error);
-    }
-
+    })
 })
