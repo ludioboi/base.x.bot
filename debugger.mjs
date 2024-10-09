@@ -5,8 +5,10 @@ import Helper from "./Helper.mjs";
 class Debugger {
     static bot = undefined
     static helper = undefined
-    constructor(bot) {
+    logFile = undefined
+    constructor(bot, logFile) {
         this.bot = bot
+        this.logFile = logFile
         this.messageHandler = this.messageHandler.bind(this)
         this.helper = new Helper(bot)
         bot.on("messageCreate", this.messageHandler)
@@ -76,6 +78,14 @@ class Debugger {
             message.reply("Stopping bot").then((msg) => {
                 process.exit(0)
             })
+        }
+
+        if (message.content === "log") {
+            try {
+                message.channel.send({content: this.logFile, files: [this.logFile]})
+            } catch (err) {
+                message.channel.send("```javascript\n" + err + "\n```")
+            }
         }
 
         if (message.content.startsWith("execd")) {

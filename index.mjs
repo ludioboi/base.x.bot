@@ -8,13 +8,14 @@ import {
     ActionRowBuilder,
     ButtonStyle, SlashCommandBuilder,
     ChannelType,
-    Partials
+    Partials, UserSelectMenuBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder
 } from 'discord.js';
 
 import fs from 'fs';
 import Debugger from './debugger.mjs';
 
 const filePath = './config.json';
+let logFile = process.argv[3];
 let config
 let lastMessage = null;
 readConfig()
@@ -35,9 +36,13 @@ function errorHandling(fn) {
     try {
         fn()
     } catch (err) {
-        bot.users.fetch("406744318712348672").then((user) => {
-            user.send("Error occurred \n```javascript\n" + err + "\n```")
-        })
+        try {
+            bot.users.fetch("406744318712348672").then((user) => {
+                user.send("Error occurred \n```javascript\n" + err + "\n```")
+            })
+        } catch (err_2) {
+        }
+
         console.error(err)
     }
 }
@@ -124,30 +129,24 @@ bot.on(Events.InteractionCreate, async (interaction) => {
                 interaction.reply({content: "Category hinzugefügt!", ephemeral: true})
             }
             if (interaction.commandName === "logs") {
-                let logsFile = "./logs.txt";
-                let logs = fs.readFileSync(logsFile, 'utf8');
+                let logs = fs.readFileSync(logFile, 'utf8');
                 try {
-                    interaction.reply({content: "Logs\n```javascript\n" + logs + "\n```", ephemeral: true});
+                    if (logs.length < 1900) {
+                        interaction.reply({content: logFile + "\n```javascript\n" + logs + "\n```", ephemeral: true});
+                    } else {
+                        interaction.reply({content: logFile + "\n```javascript\n" + logs.substring(logs.length-1900, logs.length) + "\n```", ephemeral: true});
+                    }
                 } catch (err) {
-                    interaction.reply({content: "Logs\n```javascript\n" + logs.substring(logs.length-1900, logs.length) + "\n```", ephemeral: true});
+                    console.error(err);
+                    interaction.reply({content: "Error: " + err, ephemeral: true});
                 }
             }
-            if (interaction.commandName === "logfiles") {
-                let files = fs.readdirSync("./logs/");
-                let logFiles = files.filter((file) => {
-                    return file.includes("logs") && file.includes(".txt");
-                })
-                let options = [];
-                for (let i = 0; i < logFiles.length; i++) {
-                    options.push({label: logFiles[i], value: i.toString()});
+            if (interaction.commandName === "logfile") {
+                try {
+                    interaction.reply({content: logFile, files: [logFile], ephemeral: true});
+                } catch (err) {
+                    interaction.reply({content: "```javascript\n" + err + "\n```", ephemeral: true});
                 }
-                interaction.reply({content: "Wähle einen Logfile aus", ephemeral: true, components: [new ActionRowBuilder().addSelectMenu({customId: "logfiles_" + interaction.user.id, options: options, placeholder: "Logfile auswählen"})]});
-            }
-        }
-        if (interaction.isSelectMenu()) {
-            if (interaction.costumId.startsWith("logfiles")) {
-                let value = interaction.values[0];
-                interaction.reply({content: value, files: ["./logs/" + value], ephemeral: true});
             }
         }
 
@@ -217,7 +216,7 @@ function checkVoiceStates(state){
         return acChannel["voiceChannelID"] === voiceChannel.id;
     })
     if (foundVoiceChannel) {
-        if (voiceChannel.members.size === 0 || voiceChannel.userLimit === voiceChannel.members.size) {
+        if (voiceChannel.members.size === 0) {
             let index = activeChannels.indexOf(foundVoiceChannel);
             activeChannels.splice(index, 1);
             let message = bot.channels.cache.get(config["channel_id"]).messages.cache.get(foundVoiceChannel["messageID"]);
@@ -260,15 +259,27 @@ bot.on("shardDisconnect", (event, id) => {
 bot.on("shardError", (error, id) => {
     console.error("Shard [" + id + "]: " + error);
 })
-
-bot.on("error", (error) => {
-    bot.users.fetch("406744318712348672").then((user) => {
-        user.send("Error occurred \n```javascript\n" + error + "\n```")
-    })
-    console.error(error);
+bot.on("shardReady", (id, unavailableGuilds) => {
+    console.log("Shard [" + id + "] ready with " + unavailableGuilds.length + " unavailable guilds");
+})
+bot.on("shardResume", (id, replayedEvents) => {
+    console.log("Shard [" + id + "] resumed with " + replayedEvents + " replayed events");
 })
 
-let deb = new Debugger(bot);
+bot.on("warn", (info) => {
+    console.log("WARN: " + info);
+})
+
+bot.on("error", (error) => {
+    console.error(error);
+    errorHandling(()=> {
+        bot.users.fetch("406744318712348672").then((user) => {
+            user.send("Error occurred \n```javascript\n" + error + "\n```")
+        })
+    })
+})
+
+let deb = new Debugger(bot, logFile);
 bot.login(process.argv[2]).then(() => {
     const setChannelCommand = {
         name: "setchannel",
@@ -282,9 +293,9 @@ bot.login(process.argv[2]).then(() => {
     const logsCommand = new SlashCommandBuilder()
         .setName("logs")
         .setDescription("Gebe dir die letzen Logs seit dem Start des Main Threads aus. Max. 2000 Zeichen")
-    const logFilesCommand = new SlashCommandBuilder()
-        .setName("logfiles")
-        .setDescription("Gebe dir eine Liste der Logfiles aus, um dir einen Log zuzuschicken, wähle den entsprechenden Namen aus der Liste aus")
+    const logFileCommand = new SlashCommandBuilder()
+        .setName("logfile")
+        .setDescription("Wähle ein Logfile aus")
 
 
     errorHandling(()=> {
@@ -295,7 +306,7 @@ bot.login(process.argv[2]).then(() => {
             })
             guild.commands.create(logsCommand).then((command) => {
             })
-            guild.commands.create(logFilesCommand).then((command) => {
+            guild.commands.create(logFileCommand).then((command) => {
             })
 
         })

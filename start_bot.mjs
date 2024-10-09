@@ -2,7 +2,11 @@ import {exec} from "child_process"
 import fs from "fs"
 import dateformat from "dateformat"
 
-const logFile = "./logs/" + dateformat(new Date(), "dd.mm.yyyy-hh:MM:ss") + "_logs.txt"
+if (fs.existsSync("./logs/") === false) {
+    fs.mkdirSync("./logs/")
+}
+
+const logFile = "./logs/" + dateformat(new Date(), "dd_mm_yyyy-hh_mm_ss") + "_logs.txt"
 
 function log(data, proc=undefined) {
     if (proc === undefined) {
@@ -10,7 +14,7 @@ function log(data, proc=undefined) {
     }
     let logString = dateformat(new Date(), "dd.mm.yyyy - hh:MM:ss:l") + " [" + proc.pid + "]: " + data
     console.log(logString)
-    fs.appendFile(logFile, logString, (err) => {
+    fs.appendFile(logFile, logString + "\n", (err) => {
         if (err) {
             console.error(err)
         }
@@ -27,7 +31,7 @@ function clearLogs() {
 }
 
 function writeUpdateLog(data) {
-    fs.appendFile("./updateLogs.txt", data, (err) => {
+    fs.appendFile("./updateLogs.txt", data + "\n", (err) => {
         if (err) {
             console.error(err)
         }
@@ -54,6 +58,11 @@ function updateBot(){
     })
 }
 
+let restartAttempts = 0
+let maxRestartAttempts = 5
+let restartTimeout = 1000 * 60 * 10
+let timeoutID = undefined
+
 function startBot(logFile, updateFile=undefined){
     let botProc = exec("node index.mjs " + process.argv[2] + " " + logFile + (updateFile === undefined ? "" : " " + updateFile))
     botProc.stdout.on("data", (data) => {
@@ -64,8 +73,6 @@ function startBot(logFile, updateFile=undefined){
     })
     botProc.on("error", (err) => {
         log("Error: " + err)
-        log("Trying to restart bot")
-        startBot(logFile, updateFile)
     })
     botProc.on("exit", (code) => {
         if (code === 0) {
@@ -73,7 +80,48 @@ function startBot(logFile, updateFile=undefined){
         } else if (code === 233) {
             log("Bot has been stopped and trying to update")
             updateBot()
+        } else {
+            restartAttempts++
+            if (restartAttempts >= maxRestartAttempts) {
+                log("Bot has been stopped with unknown exit code: " + code + ". Maximum restart attempts reached, stopping bot")
+                if (timeoutID !== undefined) {
+                    clearTimeout(timeoutID)
+                }
+                let git = exec("git add ./logs/" + logFile)
+                git.on("message", (data) => {
+                    console.log(data)
+                })
+                git.on("exit", (code) => {
+                    console.log("git add complete")
+                    git = exec("git commit -m \"Log file " + logFile + " has been added\"")
+                    git.on("message", (data) => {
+                        console.log(data)
+                    })
+                    git.on("exit", (code) => {
+                        console.log("git commit complete")
+                        git = exec("git push")
+                        git.on("message", (data) => {
+                            console.log(data)
+                        })
+                        git.on("exit", (code) => {
+                            console.log("git push complete")
+                            process.exit(0)
+                        })
+                    })
+                })
+                return
+            }
+            if (timeoutID !== undefined) {
+                clearTimeout(timeoutID)
+            }
+            setTimeout(() => {
+                timeoutID = undefined
+                restartAttempts = 0
+            }, restartTimeout)
+            log("Bot has been stopped with unknown exit code: " + code + ". Trying to restart bot... Attempt " + restartAttempts)
+            startBot(logFile, updateFile)
         }
+
     })
 }
 
