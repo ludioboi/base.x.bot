@@ -1,0 +1,5 @@
+09.10.2024 - 06:13:55:360 [31396]: Main Process started
+09.10.2024 - 06:13:56:839 [9084]: Shard [0] ready with undefined unavailable guilds
+
+09.10.2024 - 06:13:56:840 [9084]: Logged in as Base. X Command#7909!
+
