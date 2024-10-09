@@ -260,7 +260,7 @@ bot.on("shardError", (error, id) => {
     console.error("Shard [" + id + "]: " + error);
 })
 bot.on("shardReady", (id, unavailableGuilds) => {
-    console.log("Shard [" + id + "] ready with " + unavailableGuilds.length + " unavailable guilds");
+    console.log("Shard [" + id + "] ready with " + (unavailableGuilds === undefined ? 0 : unavailableGuilds) + " unavailable guilds");
 })
 bot.on("shardResume", (id, replayedEvents) => {
     console.log("Shard [" + id + "] resumed with " + replayedEvents + " replayed events");

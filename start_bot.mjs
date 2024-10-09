@@ -6,7 +6,7 @@ if (fs.existsSync("./logs/") === false) {
     fs.mkdirSync("./logs/")
 }
 
-const logFile = "./logs/" + dateformat(new Date(), "dd_mm_yyyy-hh_mm_ss") + "_logs.txt"
+const logFile = "./logs/" + dateformat(new Date(), "dd_mm_yyyy-hh_MM_ss") + "_logs.txt"
 
 function log(data, proc=undefined) {
     if (proc === undefined) {
@@ -81,7 +81,6 @@ function startBot(logFile, updateFile=undefined){
             log("Bot has been stopped and trying to update")
             updateBot()
         } else {
-            restartAttempts++
             if (restartAttempts >= maxRestartAttempts) {
                 log("Bot has been stopped with unknown exit code: " + code + ". Maximum restart attempts reached, stopping bot")
                 if (timeoutID !== undefined) {
@@ -111,6 +110,7 @@ function startBot(logFile, updateFile=undefined){
                 })
                 return
             }
+            restartAttempts++
             if (timeoutID !== undefined) {
                 clearTimeout(timeoutID)
             }
