@@ -2,13 +2,15 @@ import {exec} from "child_process"
 import fs from "fs"
 import dateformat from "dateformat"
 
+const logFile = "./logs/" + dateformat(new Date(), "dd.mm.yyyy-hh:MM:ss") + "_logs.txt"
+
 function log(data, proc=undefined) {
     if (proc === undefined) {
         proc = process
     }
     let logString = dateformat(new Date(), "dd.mm.yyyy - hh:MM:ss:l") + " [" + proc.pid + "]: " + data
     console.log(logString)
-    fs.appendFile("./logs.txt", logString + "\n", (err) => {
+    fs.appendFile(logFile, logString, (err) => {
         if (err) {
             console.error(err)
         }
@@ -20,12 +22,12 @@ function clearUpdateLogs() {
 }
 
 function clearLogs() {
-    fs.writeFileSync("./logs.txt", "")
+    fs.writeFileSync(logFile, "")
     clearUpdateLogs()
 }
 
 function writeUpdateLog(data) {
-    fs.appendFile("./updateLogs.txt", data + "\n", (err) => {
+    fs.appendFile("./updateLogs.txt", data, (err) => {
         if (err) {
             console.error(err)
         }
@@ -47,18 +49,23 @@ function updateBot(){
         })
         npm.on("exit", (code) => {
             log("Update finished, attempting to start bot")
-            startBot("./updateLogs.txt")
+            startBot(logFile, "./updateLogs.txt")
         })
     })
 }
 
-function startBot(file = undefined){
-    let botProc = exec("node index.mjs " + process.argv[2] + (file === undefined ? "" : " " + file))
+function startBot(logFile, updateFile=undefined){
+    let botProc = exec("node index.mjs " + process.argv[2] + " " + logFile + (updateFile === undefined ? "" : " " + updateFile))
     botProc.stdout.on("data", (data) => {
         log(data, botProc)
     })
     botProc.stderr.on("data", (data) => {
         log("Error: " + data, botProc)
+    })
+    botProc.on("error", (err) => {
+        log("Error: " + err)
+        log("Trying to restart bot")
+        startBot(logFile, updateFile)
     })
     botProc.on("exit", (code) => {
         if (code === 0) {
@@ -72,4 +79,4 @@ function startBot(file = undefined){
 
 clearLogs()
 log("Main Process started")
-startBot()
+startBot(logFile)

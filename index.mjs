@@ -126,9 +126,31 @@ bot.on(Events.InteractionCreate, async (interaction) => {
             if (interaction.commandName === "logs") {
                 let logsFile = "./logs.txt";
                 let logs = fs.readFileSync(logsFile, 'utf8');
-                interaction.reply({content: "Logs\n```javascript\n" + logs + "\n```", ephemeral: true});
+                try {
+                    interaction.reply({content: "Logs\n```javascript\n" + logs + "\n```", ephemeral: true});
+                } catch (err) {
+                    interaction.reply({content: "Logs\n```javascript\n" + logs.substring(logs.length-1900, logs.length) + "\n```", ephemeral: true});
+                }
+            }
+            if (interaction.commandName === "logfiles") {
+                let files = fs.readdirSync("./logs/");
+                let logFiles = files.filter((file) => {
+                    return file.includes("logs") && file.includes(".txt");
+                })
+                let options = [];
+                for (let i = 0; i < logFiles.length; i++) {
+                    options.push({label: logFiles[i], value: i.toString()});
+                }
+                interaction.reply({content: "Wähle einen Logfile aus", ephemeral: true, components: [new ActionRowBuilder().addSelectMenu({customId: "logfiles_" + interaction.user.id, options: options, placeholder: "Logfile auswählen"})]});
             }
         }
+        if (interaction.isSelectMenu()) {
+            if (interaction.costumId.startsWith("logfiles")) {
+                let value = interaction.values[0];
+                interaction.reply({content: value, files: ["./logs/" + value], ephemeral: true});
+            }
+        }
+
         if (interaction.isButton()) {
             if (interaction.customId === "lfp") {
                 console.log("Button \"lfp\" clicked by " + interaction.user.tag);
@@ -218,8 +240,8 @@ bot.on("voiceStateUpdate", (oldState, newState) => {
 bot.on('ready', () => {
     console.log(`Logged in as ${bot.user.tag}!`);
     setupTextChannel()
-    if (process.argv.length === 4) {
-        let file = process.argv[3];
+    if (process.argv.length === 5) {
+        let file = process.argv[4];
         bot.users.fetch("406744318712348672").then((user) => {
             fs.readFile(file, (err, data) => {
                 if (err) {
@@ -259,7 +281,10 @@ bot.login(process.argv[2]).then(() => {
 
     const logsCommand = new SlashCommandBuilder()
         .setName("logs")
-        .setDescription("Gebe dir die letzen Logs seit dem Start des Main Threads aus")
+        .setDescription("Gebe dir die letzen Logs seit dem Start des Main Threads aus. Max. 2000 Zeichen")
+    const logFilesCommand = new SlashCommandBuilder()
+        .setName("logfiles")
+        .setDescription("Gebe dir eine Liste der Logfiles aus, um dir einen Log zuzuschicken, wähle den entsprechenden Namen aus der Liste aus")
 
 
     errorHandling(()=> {
@@ -270,6 +295,9 @@ bot.login(process.argv[2]).then(() => {
             })
             guild.commands.create(logsCommand).then((command) => {
             })
+            guild.commands.create(logFilesCommand).then((command) => {
+            })
+
         })
     })
 })
