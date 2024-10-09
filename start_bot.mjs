@@ -90,6 +90,12 @@ function startBot(logFile, updateFile=undefined){
                 git.on("message", (data) => {
                     console.log(data)
                 })
+                git.on("error", (err) => {
+                    console.error(err)
+                })
+                git.on("close", (code) => {
+                    console.log(code)
+                })
                 git.on("exit", (code) => {
                     console.log("git add complete")
                     git = exec("git commit -m \"Log file " + logFile + " has been added\"")
