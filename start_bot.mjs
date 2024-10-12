@@ -124,7 +124,9 @@ function startBot(logFile, updateFile=undefined){
                 timeoutID = undefined
                 restartAttempts = 0
             }, restartTimeout)
+
             log("Bot has been stopped with unknown exit code: " + code + ". Trying to restart bot... Attempt " + restartAttempts)
+            updateFile = undefined
             startBot(logFile, updateFile)
         }
 

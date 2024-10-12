@@ -133,9 +133,9 @@ bot.on(Events.InteractionCreate, async (interaction) => {
                 let logs = fs.readFileSync(logFile, 'utf8');
                 try {
                     if (logs.length < 1900) {
-                        interaction.reply({content: logFile + "\n```javascript\n" + logs + "\n```", ephemeral: true});
+                        interaction.editReply({content: logFile + "\n```javascript\n" + logs + "\n```", ephemeral: true});
                     } else {
-                        interaction.reply({content: logFile + "\n```javascript\n" + logs.substring(logs.length-1900, logs.length) + "\n```", ephemeral: true});
+                        interaction.editReply({content: logFile + "\n```javascript\n" + logs.substring(logs.length-1900, logs.length) + "\n```", ephemeral: true});
                     }
                 } catch (err) {
                     console.error(err);
