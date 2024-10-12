@@ -86,34 +86,7 @@ function startBot(logFile, updateFile=undefined){
                 if (timeoutID !== undefined) {
                     clearTimeout(timeoutID)
                 }
-                let git = exec("git add ./logs/" + logFile)
-                git.on("message", (data) => {
-                    console.log(data)
-                })
-                git.on("error", (err) => {
-                    console.error(err)
-                })
-                git.on("close", (code) => {
-                    console.log(code)
-                })
-                git.on("exit", (code) => {
-                    console.log("git add complete")
-                    git = exec("git commit -m \"Log file " + logFile + " has been added\"")
-                    git.on("message", (data) => {
-                        console.log(data)
-                    })
-                    git.on("exit", (code) => {
-                        console.log("git commit complete")
-                        git = exec("git push")
-                        git.on("message", (data) => {
-                            console.log(data)
-                        })
-                        git.on("exit", (code) => {
-                            console.log("git push complete")
-                            process.exit(0)
-                        })
-                    })
-                })
+                process.exit(0)
                 return
             }
             restartAttempts++
