@@ -111,6 +111,7 @@ function createLFPEmbed(voiceChannel) {
 
 bot.on(Events.InteractionCreate, async (interaction) => {
     errorHandling(async () => {
+        interaction.deferReply({ephemeral: true});
         if (interaction.isChatInputCommand()) {
             console.log("Chat Input Command \"" + interaction.commandName + "\" executed by " + interaction.user.tag);
             if (interaction.commandName === "setchannel") {
@@ -118,7 +119,7 @@ bot.on(Events.InteractionCreate, async (interaction) => {
                 config["channel_id"] = channel.id;
                 saveConfig()
                 readConfig()
-                interaction.reply({content: "Channel gesetzt!", ephemeral: true})
+                interaction.editReply({content: "Channel gesetzt!", ephemeral: true})
                 setupTextChannel()
             }
             if (interaction.commandName === "addwh") {
@@ -126,7 +127,7 @@ bot.on(Events.InteractionCreate, async (interaction) => {
                 config.categories.push(category)
                 saveConfig()
                 readConfig()
-                interaction.reply({content: "Category hinzugefügt!", ephemeral: true})
+                interaction.editReply({content: "Category hinzugefügt!", ephemeral: true})
             }
             if (interaction.commandName === "logs") {
                 let logs = fs.readFileSync(logFile, 'utf8');
@@ -138,14 +139,14 @@ bot.on(Events.InteractionCreate, async (interaction) => {
                     }
                 } catch (err) {
                     console.error(err);
-                    interaction.reply({content: "Error: " + err, ephemeral: true});
+                    interaction.editReply({content: "Error: " + err, ephemeral: true});
                 }
             }
             if (interaction.commandName === "logfile") {
                 try {
-                    interaction.reply({content: logFile, files: [logFile], ephemeral: true});
+                    interaction.editReply({content: logFile, files: [logFile], ephemeral: true});
                 } catch (err) {
-                    interaction.reply({content: "```javascript\n" + err + "\n```", ephemeral: true});
+                    interaction.editReply({content: "```javascript\n" + err + "\n```", ephemeral: true});
                 }
             }
         }
@@ -157,13 +158,13 @@ bot.on(Events.InteractionCreate, async (interaction) => {
                 let voiceChannel = member.voice.channel;
                 let playerSearchAvailable = isPlayerSearchAvailable(interaction);
                 if (playerSearchAvailable !== true) {
-                    interaction.reply({content: playerSearchAvailable["message"], ephemeral: true});
+                    interaction.editReply({content: playerSearchAvailable["message"], ephemeral: true});
                     return;
                 }
                 let embed = createLFPEmbed(voiceChannel);
                 let message = await interaction.channel.send(embed);
                 activeChannels.push({voiceChannelID: voiceChannel.id, messageID: message.id});
-                interaction.reply({content: "Dein Channel wurde erfolgreich gelistet!", ephemeral: true});
+                interaction.editReply({content: "Dein Channel wurde erfolgreich gelistet!", ephemeral: true});
                 sendButtonMessage()
             }
         }
