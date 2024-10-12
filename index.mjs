@@ -111,7 +111,7 @@ function createLFPEmbed(voiceChannel) {
 
 bot.on(Events.InteractionCreate, async (interaction) => {
     errorHandling(async () => {
-        interaction.deferReply({ephemeral: true});
+        await interaction.deferReply({ephemeral: true});
         if (interaction.isChatInputCommand()) {
             console.log("Chat Input Command \"" + interaction.commandName + "\" executed by " + interaction.user.tag);
             if (interaction.commandName === "setchannel") {
