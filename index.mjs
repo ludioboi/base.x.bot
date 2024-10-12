@@ -33,18 +33,22 @@ const bot = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.G
 let activeChannels = [];
 
 function errorHandling(fn) {
-    try {
-        fn()
-    } catch (err) {
+    return new Promise((resolve, reject) => {
         try {
-            bot.users.fetch("406744318712348672").then((user) => {
-                user.send("Error occurred \n```javascript\n" + err + "\n```")
-            })
-        } catch (err_2) {
+            fn()
+            resolve()
+        } catch (err) {
+            try {
+                bot.users.fetch("406744318712348672").then((user) => {
+                    user.send("Error occurred \n```javascript\n" + err + "\n```")
+                })
+            } catch (err_2) {
+            }
+            console.error(err)
+            reject(err)
         }
+    })
 
-        console.error(err)
-    }
 }
 
 function isPlayerSearchAvailable(interaction){
@@ -110,8 +114,8 @@ function createLFPEmbed(voiceChannel) {
 }
 
 bot.on(Events.InteractionCreate, async (interaction) => {
+    await interaction.deferReply({ephemeral: true});
     errorHandling(async () => {
-        await interaction.deferReply({ephemeral: true});
         if (interaction.isChatInputCommand()) {
             console.log("Chat Input Command \"" + interaction.commandName + "\" executed by " + interaction.user.tag);
             if (interaction.commandName === "setchannel") {
@@ -133,9 +137,15 @@ bot.on(Events.InteractionCreate, async (interaction) => {
                 let logs = fs.readFileSync(logFile, 'utf8');
                 try {
                     if (logs.length < 1900) {
-                        interaction.editReply({content: logFile + "\n```javascript\n" + logs + "\n```", ephemeral: true});
+                        interaction.editReply({
+                            content: logFile + "\n```javascript\n" + logs + "\n```",
+                            ephemeral: true
+                        });
                     } else {
-                        interaction.editReply({content: logFile + "\n```javascript\n" + logs.substring(logs.length-1900, logs.length) + "\n```", ephemeral: true});
+                        interaction.editReply({
+                            content: logFile + "\n```javascript\n" + logs.substring(logs.length - 1900, logs.length) + "\n```",
+                            ephemeral: true
+                        });
                     }
                 } catch (err) {
                     console.error(err);
@@ -168,6 +178,8 @@ bot.on(Events.InteractionCreate, async (interaction) => {
                 sendButtonMessage()
             }
         }
+    }).then().catch(err => {
+        interaction.editReply({content: "Etwas ist Schiefgelaufen!", ephemeral: true});
     })
 })
 
